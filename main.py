@@ -85,7 +85,7 @@ def download_in_batches(files_to_download, batch_size=5):
 
 
 if __name__ == '__main__':
-    url = input("Veuillez entrer l'URL du fichier à télécharger : ").strip()
+    url = input("Veuillez entrer l'URL du manga à télécharger : ").strip()
     anime = url.replace(
         'https://anime-sama.fr/catalogue/', '').replace("/scan/vf/", '')
     Path(anime).mkdir(parents=True, exist_ok=True)
