@@ -12,7 +12,7 @@ from pathvalidate import sanitize_filename
 from tqdm import tqdm
 
 logging.basicConfig(filename='download.log', level=logging.INFO,
-                    format='%(asctime)s - %(levelname)s - %(message)s')
+                    format='%(asctime)s - %(levelname)s - %(message)s', filemode='w')
 
 
 def download_catalog(url=None) -> str:
