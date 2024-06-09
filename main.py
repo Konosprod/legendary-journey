@@ -111,8 +111,7 @@ def create_cbz(directory, name):
 
 
 if __name__ == '__main__':
-    # url = input("Veuillez entrer l'URL du manga à télécharger : ").strip()
-    url = "https://anime-sama.fr/catalogue/20th-century-boys/scan-21st-century-boys/vf/"
+    url = input("Veuillez entrer l'URL du manga à télécharger : ").strip()
     anime = sanitize_filename(get_manga_name(url))
     Path(anime).mkdir(parents=True, exist_ok=True)
 
