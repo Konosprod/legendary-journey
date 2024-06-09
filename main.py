@@ -1,10 +1,14 @@
 import json
 import logging
 import re
+import shutil
+import zipfile
 from concurrent.futures import ThreadPoolExecutor, as_completed
 from pathlib import Path
 
 import requests
+from bs4 import BeautifulSoup
+from pathvalidate import sanitize_filename
 from tqdm import tqdm
 
 logging.basicConfig(filename='download.log', level=logging.INFO,
@@ -20,15 +24,16 @@ def download_catalog(url=None) -> str:
     try:
 
         response = requests.get(url + 'episodes.js').text
-        pattern = r"var eps.[0-9]+= \[.*?\];"
+        pattern = r"var eps[0-9]+= \[.*?\];"
         for ep in re.findall(pattern, response, re.DOTALL):
-            pattern = r"var eps(.[0-9]+)"
+            pattern = r"var eps([0-9]+)"
             ep_number = re.search(pattern, ep).group(1)
             pattern = r"\[(.*?)\];"
             matches = re.findall(pattern, ep, re.DOTALL)[0].split(',')
             for url in matches:
                 url = url.replace('\'', '')
                 url = url.replace('\n', '')
+                url = url.replace('\r', '')
                 url = url.replace(',', '')
                 if url != '':
                     urls.append(url)
@@ -42,6 +47,8 @@ def download_catalog(url=None) -> str:
     except Exception as e:
         print(f"Erreur lors du téléchargement du catalogue : {e}")
         logging.error("Erreur lors du téléchargement du catalogue : %s", e)
+
+    eps = sorted(eps, key=lambda x: int(x['ep']))
 
     return eps
 
@@ -65,8 +72,9 @@ def download_file(url, destination):
                 file.write(chunk)
                 bar.update(len(chunk))
     except Exception as e:
-        print(f"Erreur lors du téléchargement du fichier : {e}")
-        logging.error("Erreur lors du téléchargement du fichier : %s", e)
+        print(f"Erreur lors du téléchargement du fichier {destination} : {e}")
+        logging.error(
+            "Erreur lors du téléchargement du fichier %s : %s", destination, e)
 
 
 def download_in_batches(files_to_download, batch_size=5):
@@ -84,10 +92,28 @@ def download_in_batches(files_to_download, batch_size=5):
                     logging.error("Erreur lors du téléchargement : %s", e)
 
 
+def get_manga_name(url):
+    reponse = requests.get(url)
+    source = BeautifulSoup(reponse.text, 'html.parser')
+    return source.find('h3', {"id": "titreOeuvre"}).text
+
+
+def create_cbz(directory, name):
+
+    for folder in directory.iterdir():
+        if folder.is_dir():
+            logging.info(f"Création du fichier CBZ pour le dossier {folder}")
+            print(f"Création du fichier CBZ pour le dossier {folder}")
+            with zipfile.ZipFile(directory / f"{name} - {folder.name}.cbz", 'w') as zipf:
+                for file in folder.iterdir():
+                    zipf.write(file, file.name)
+            shutil.rmtree(folder)
+
+
 if __name__ == '__main__':
-    url = input("Veuillez entrer l'URL du manga à télécharger : ").strip()
-    anime = url.replace(
-        'https://anime-sama.fr/catalogue/', '').replace("/scan/vf/", '')
+    # url = input("Veuillez entrer l'URL du manga à télécharger : ").strip()
+    url = "https://anime-sama.fr/catalogue/20th-century-boys/scan-21st-century-boys/vf/"
+    anime = sanitize_filename(get_manga_name(url))
     Path(anime).mkdir(parents=True, exist_ok=True)
 
     catalog = download_catalog(url)
@@ -100,3 +126,5 @@ if __name__ == '__main__':
             (url, str(output_dir / f"{index}.jpg")) for index, url in enumerate(ep['urls'])]
         # Lancer le téléchargement
         download_in_batches(files_to_download, batch_size=5)
+
+    create_cbz(Path(anime), anime)
